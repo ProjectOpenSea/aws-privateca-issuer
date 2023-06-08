@@ -276,7 +276,7 @@ func TestPCATemplateArn(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			spec := tc.certificateSpec
 
-			response := templateArn(arn, spec)
+			response := templateArn(arn, spec, 0)
 			assert.True(t, strings.HasSuffix(response, tc.expectedSuffix), "returns expected template")
 			assert.True(t, strings.HasPrefix(response, "arn:aws:"), "returns expected ARN prefix")
 		})
@@ -285,7 +285,7 @@ func TestPCATemplateArn(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			spec := tc.certificateSpec
 
-			response := templateArn(govArn, spec)
+			response := templateArn(govArn, spec, 0)
 			assert.True(t, strings.HasSuffix(response, tc.expectedSuffix), "us-gov returns expected template")
 			assert.True(t, strings.HasPrefix(response, "arn:aws-us-gov:"), "us-gov returns expected ARN prefix")
 		})
@@ -294,7 +294,7 @@ func TestPCATemplateArn(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			spec := tc.certificateSpec
 
-			response := templateArn(fakeArn, spec)
+			response := templateArn(fakeArn, spec, 0)
 			assert.True(t, strings.HasSuffix(response, tc.expectedSuffix), "fake arn returns expected template")
 			assert.True(t, strings.HasPrefix(response, "arn:fake:"), "fake arn returns expected ARN prefix")
 		})

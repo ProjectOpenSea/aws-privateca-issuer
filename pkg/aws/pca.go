@@ -22,6 +22,7 @@ import (
 	"crypto/md5"
 	"encoding/pem"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -105,7 +106,16 @@ func (p *PCAProvisioner) Sign(ctx context.Context, cr *cmapi.CertificateRequest,
 		validityExpiration = int64(p.now().Unix()) + int64(cr.Spec.Duration.Seconds())
 	}
 
-	tempArn := templateArn(p.arn, cr.Spec)
+	pathLen := 0
+	annotations := cr.GetAnnotations()
+	if annotations["aws-pca-issuer.cert-manager.io/ca-path-len"] != "" {
+		pl, err := strconv.Atoi(annotations["aws-pca-issuer.cert-manager.io/ca-path-len"])
+		if err != nil {
+			return nil, nil, fmt.Errorf("unparsable pathlen annotation: %v", err)
+		}
+		pathLen = pl
+	}
+	tempArn := templateArn(p.arn, cr.Spec, pathLen)
 
 	// Consider it a "retry" if we try to re-create a cert with the same name in the same namespace
 	token := idempotencyToken(cr)
@@ -188,12 +198,12 @@ func (p *PCAProvisioner) now() time.Time {
 	return time.Now()
 }
 
-func templateArn(caArn string, spec cmapi.CertificateRequestSpec) string {
+func templateArn(caArn string, spec cmapi.CertificateRequestSpec, pathLen int) string {
 	arn := strings.SplitAfterN(caArn, ":", 3)
 	prefix := arn[0] + arn[1]
 
 	if spec.IsCA {
-		return prefix + "acm-pca:::template/SubordinateCACertificate_PathLen0/V1"
+		return fmt.Sprintf("%sacm-pca:::template/SubordinateCACertificate_PathLen%d/V1", prefix, pathLen)
 	}
 
 	if len(spec.Usages) == 1 {
@@ -225,6 +235,7 @@ func splitRootCACertificate(caCertChainPem []byte) ([]byte, []byte, error) {
 		block, rest := pem.Decode(caCertChainPem)
 		if block == nil || block.Type != "CERTIFICATE" {
 			return nil, nil, fmt.Errorf("failed to read certificate")
+
 		}
 		var encBuf bytes.Buffer
 		if err := pem.Encode(&encBuf, block); err != nil {
